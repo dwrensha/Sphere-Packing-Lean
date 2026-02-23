@@ -1,4 +1,5 @@
-import SpherePacking.ModularForms.Derivative
+module
+public import SpherePacking.ModularForms.Derivative
 
 /-!
 # Slash Invariance of Serre Derivative of E₂
@@ -34,14 +35,14 @@ noncomputable section
 /-- The D-derivative of the anomaly function D₂.
     D₂ γ z = 2πi · (γ₁₀ / denom γ z), so
     D(D₂ γ) = (2πi)⁻¹ · d/dz[2πi · c / denom] = -c² / denom² -/
-lemma D_D₂ (γ : SL(2, ℤ)) (z : ℍ) :
+public lemma D_D₂ (γ : SL(2, ℤ)) (z : ℍ) :
     D (D₂ γ) z = - (γ 1 0 : ℂ)^2 / (denom γ z)^2 := by
   have hz_ne : denom γ z ≠ 0 := UpperHalfPlane.denom_ne_zero γ z
   have hderiv : deriv ((D₂ γ) ∘ ofComplex) z =
       deriv (fun w => (2 * π * I * (γ 1 0 : ℂ)) / denom γ w) z := by
     apply Filter.EventuallyEq.deriv_eq
     filter_upwards [isOpen_upperHalfPlaneSet.mem_nhds z.im_pos] with w hw
-    simp only [comp_apply, ofComplex_apply_of_im_pos hw, D₂, coe_mk_subtype]
+    simp only [comp_apply, ofComplex_apply_of_im_pos hw, D₂, UpperHalfPlane.coe_mk]
   simp only [D, hderiv, div_eq_mul_inv, ← zpow_neg_one]
   rw [deriv_const_mul _ (.zpow (differentiableAt_denom γ z) (.inl hz_ne)),
       deriv_denom_zpow γ 1 z]
@@ -50,7 +51,7 @@ lemma D_D₂ (γ : SL(2, ℤ)) (z : ℍ) :
 /-! ## MDifferentiable infrastructure for D₂ -/
 
 /-- D₂ γ is MDifferentiable: it's a constant divided by a linear polynomial. -/
-lemma MDifferentiable_D₂ (γ : SL(2, ℤ)) : MDifferentiable 𝓘(ℂ) 𝓘(ℂ) (D₂ γ) := fun z => by
+public lemma MDifferentiable_D₂ (γ : SL(2, ℤ)) : MDifferentiable 𝓘(ℂ) 𝓘(ℂ) (D₂ γ) := fun z => by
   have heq : D₂ γ = (fun w => (2 * π * I * (γ 1 0 : ℂ)) / denom γ w) ∘ (↑) := by ext; rfl
   rw [heq]; exact DifferentiableAt_MDifferentiableAt <|
     .div (differentiableAt_const _) (differentiableAt_denom γ z) (denom_ne_zero γ z)
@@ -73,7 +74,7 @@ After expansion, the anomaly terms involving D₂ γ and D(D₂ γ) cancel using
 - D(D₂ γ) = -c²/denom² (from D_D₂)
 - The identity α = α² π²/3 (from ζ(2) = π²/6)
 -/
-lemma serre_DE₂_slash_invariant (γ : SL(2, ℤ)) :
+public lemma serre_DE₂_slash_invariant (γ : SL(2, ℤ)) :
     (serre_D 1 E₂) ∣[(4 : ℤ)] γ = serre_D 1 E₂ := by
   have hserre12 : serre_D 1 E₂ = serre_D 2 E₂ + (1 / 12 : ℂ) • (E₂ * E₂) := by
     ext z; simp only [serre_D, Pi.add_apply, Pi.smul_apply, Pi.mul_apply, smul_eq_mul]; ring
@@ -95,8 +96,7 @@ lemma serre_DE₂_slash_invariant (γ : SL(2, ℤ)) :
   simp only [Pi.sub_apply, Pi.smul_apply, smul_eq_mul]
   have hD_lin : D (E₂ - α • D₂ γ) z = D E₂ z - α * D (D₂ γ) z := by
     have hαD₂ := (MDifferentiable_D₂ γ).const_smul α
-    simp only [D_sub E₂ _ E₂_holo' hαD₂, D_smul α _ (MDifferentiable_D₂ γ),
-               Pi.sub_apply, Pi.smul_apply, smul_eq_mul]
+    simp only [D_sub E₂ _ E₂_holo' hαD₂, D_smul α _, Pi.sub_apply, Pi.smul_apply, smul_eq_mul]
   simp only [serre_D, Pi.sub_apply, Pi.mul_apply, Pi.smul_apply, smul_eq_mul]
   rw [hD_lin, D_D₂ γ z]
   have hα_val : α = 3 / π^2 := by simp only [hα_def, riemannZeta_two]; field_simp; ring

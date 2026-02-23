@@ -1,66 +1,78 @@
-import Mathlib.Analysis.Normed.Group.Tannery
-import Mathlib.LinearAlgebra.Matrix.FixedDetMatrices
-import Mathlib.NumberTheory.LSeries.HurwitzZetaValues
-import SpherePacking.ModularForms.Cauchylems
-import SpherePacking.ModularForms.limunder_lems
-import SpherePacking.ModularForms.tendstolems
+module
+public import Mathlib.Analysis.Normed.Group.Tannery
+public import Mathlib.LinearAlgebra.Matrix.FixedDetMatrices
+public import Mathlib.NumberTheory.LSeries.HurwitzZetaValues
+public import SpherePacking.ModularForms.Cauchylems
+public import SpherePacking.ModularForms.limunder_lems
+public import SpherePacking.ModularForms.tendstolems
+import SpherePacking.ModularForms.SummableLemmas.Basic
+import SpherePacking.ModularForms.SummableLemmas.Cotangent
+import SpherePacking.ModularForms.SummableLemmas.G2
+import SpherePacking.ModularForms.SummableLemmas.QExpansion
+import SpherePacking.ModularForms.SummableLemmas.IntPNat
 
 
-open ModularForm EisensteinSeries UpperHalfPlane TopologicalSpace Set MeasureTheory intervalIntegral
+/-!
+# The Eisenstein series `E₂`
+
+This file defines the weight-2 Eisenstein series `E₂` on the upper half-plane, together with the
+auxiliary series `G₂` used to define it and a correction term `D₂` which appears in its modular
+transformation behavior.
+
+## Main definitions
+* `G₂`, `G₂_a`
+* `E₂`
+* `D₂`
+-/
+
+open scoped Interval Real Topology BigOperators Nat Matrix.SpecialLinearGroup
+
+open ModularForm EisensteinSeries UpperHalfPlane TopologicalSpace Set MeasureTheory
   Metric Filter Function Complex MatrixGroups Matrix.SpecialLinearGroup
-
-open scoped Interval Real NNReal ENNReal Topology BigOperators Nat Matrix.SpecialLinearGroup
-
 
 open ArithmeticFunction
 
 noncomputable section Definitions
 
 
-/- Maybe this is the definition we want as I cant see how to easily show the other outer sum is
-absolutely convergent. -/
-def G₂ : ℍ → ℂ := fun z => limUnder (atTop)
+/-- The series `G₂`, defined using symmetric partial sums over `Ico (-N) N` and `limUnder`. -/
+@[expose] public def G₂ : ℍ → ℂ := fun z => limUnder (atTop)
     (fun N : ℕ => ∑ m ∈ Finset.Ico (-N : ℤ) N, (∑' (n : ℤ), (1 / ((m : ℂ) * z + n) ^ 2)))
 
-def G₂_a : ℍ → ℂ := fun z => limUnder (atTop)
+/-- A variant of `G₂` using symmetric partial sums over `Icc (-N) N`. -/
+@[expose] public def G₂_a : ℍ → ℂ := fun z => limUnder (atTop)
     (fun N : ℕ => ∑ m ∈ Finset.Icc (-N : ℤ) N, (∑' (n : ℤ), (1 / ((m : ℂ) * z + n) ^ 2)))
 
-def E₂ : ℍ → ℂ := (1 / (2 * riemannZeta 2)) • G₂
+/-- The Eisenstein series `E₂`, normalized as a scalar multiple of `G₂`. -/
+@[expose] public def E₂ : ℍ → ℂ := (1 / (2 * riemannZeta 2)) • G₂
 
-@[coe]
-abbrev coe2 (g : SL(2, ℤ)) : (GL (Fin 2) ℝ) :=
+/-- Coercion of `SL(2,ℤ)` matrices to `GL(2,ℝ)` via the standard map. -/
+@[coe, reducible, expose] public def coe2 (g : SL(2, ℤ)) : (GL (Fin 2) ℝ) :=
   Matrix.SpecialLinearGroup.toGL ((Matrix.SpecialLinearGroup.map (Int.castRingHom ℝ)) g)
 
-instance : Coe SL(2, ℤ) (GL (Fin 2) ℝ) :=
-  ⟨coe2⟩
+/-- The canonical coercion `SL(2,ℤ) → GL(2,ℝ)`. -/
+public instance : Coe SL(2, ℤ) (GL (Fin 2) ℝ) := ⟨coe2⟩
 
-lemma coe2_mul (A B : SL(2, ℤ)) :
-     coe2 (A * B) = (coe2 A) * (coe2 B) := by
-  simp_rw [coe2]
-  simp only [map_mul]
+/-- Compatibility of `coe2` with multiplication. -/
+@[simp]
+public lemma coe2_mul (A B : SL(2, ℤ)) :
+     coe2 (A * B) = (coe2 A) * (coe2 B) := by simp [coe2]
 
-def D₂ (γ : SL(2, ℤ)) : ℍ → ℂ := fun z => (2 * π * Complex.I * γ 1 0) / (denom γ z)
+/-- The correction term appearing in the weight-2 transformation law. -/
+@[expose] public def D₂ (γ : SL(2, ℤ)) : ℍ → ℂ := fun z => (2 * π * Complex.I * γ 1 0) / (denom γ z)
 
 lemma D₂_apply (γ : SL(2, ℤ)) (z : ℍ) :
     D₂ γ z = (2 * π * Complex.I * γ 1 0) / (γ 1 0 * z + γ 1 1) :=
   by rfl
 
 lemma extracted_77 (z : ℍ) (n : ℤ) : Summable fun b : ℤ ↦ (((b : ℂ) * ↑z + ↑n) ^ 2)⁻¹ := by
-  have := (
-      G2_summable_aux (-n) ⟨-1 /z, by simpa using pnat_div_upper 1 z⟩ 2 (by norm_num)
-    ).mul_left ((z : ℂ)^2)⁻¹
-  apply this.congr
+  have := (linear_right_summable (-1 /z) (-n) Int.le_rfl).mul_left ((z : ℂ)^2)⁻¹
+  refine this.congr ?_
   intro b
-  simp only [UpperHalfPlane.coe, Int.cast_neg, neg_mul]
-  field_simp
-  norm_cast
-  congr 1
-  rw [← mul_pow]
-  congr
-  have hz := ne_zero z --this come our with a coe that should be fixed
-  simp only [UpperHalfPlane.coe, ne_eq] at hz
-  field_simp
-  ring
+  have hz : (z : ℂ) ≠ 0 := by simpa using (ne_zero z)
+  simp only [Int.cast_neg, neg_mul]
+  field_simp [hz]
+  ring_nf
 
 theorem extracted_66 (z : ℍ) :
   (fun _ => ((z : ℂ) ^ 2)⁻¹) *
@@ -68,7 +80,7 @@ theorem extracted_66 (z : ℍ) :
   fun N : ℕ ↦
     ∑' (n : ℤ), ∑ x ∈ Finset.Ico (-↑N : ℤ) ↑N, (((n : ℂ) * ↑z + ↑x) ^ 2)⁻¹ := by
   ext N
-  simp
+  simp only [inv_neg, mul_neg, Pi.mul_apply]
   rw [@Finset.mul_sum]
   rw [Summable.tsum_finsetSum]
   · congr
@@ -77,24 +89,15 @@ theorem extracted_66 (z : ℍ) :
     rw [int_sum_neg]
     congr
     ext d
-    have hz := ne_zero z
-    rw [← mul_inv]
-    congr 1
-    rw [show ((d : ℂ) * ↑z + ↑n) ^ 2 = (-↑d * ↑z - ↑n) ^ 2 by ring, ← mul_pow]
-    congr
-    simp only [UpperHalfPlane.coe] at *
-    rw [mul_add]
-    field_simp
-    ring_nf
-    simp_all only [ne_eq, Int.cast_neg, mul_neg]
-    rfl
+    have hz : (z : ℂ) ≠ 0 := by simpa using (ne_zero z)
+    grind only
   · intro i hi
     exact extracted_77 z i
 
 lemma G2_S_act (z : ℍ) : (z.1 ^ 2)⁻¹ * G₂ (ModularGroup.S • z) = limUnder (atTop)
     fun N : ℕ => ((∑' (n : ℤ), ∑ m ∈ Finset.Ico (-N : ℤ) N, (1 / ((n : ℂ) * z + m) ^ 2))) := by
   rw [ modular_S_smul]
-  simp [G₂]
+  simp only [G₂, inv_neg, one_div]
   rw [ limUnder_mul_const]
   · congr
     simpa using extracted_66 z
@@ -103,102 +106,79 @@ lemma G2_S_act (z : ℍ) : (z.1 ^ 2)⁻¹ * G₂ (ModularGroup.S • z) = limUnd
       rw [int_sum_neg]
       congr
       ext n
-      simp only [UpperHalfPlane.coe, Int.cast_neg, neg_mul, inv_inj]
+      simp only [Int.cast_neg, neg_mul, inv_inj]
       ring
     have := G2_cauchy ⟨-(1 : ℂ) / z, by simpa using pnat_div_upper 1 z⟩
-    simp only [coe_mk_subtype, one_div] at this
-    apply this.congr
-    ext N
-    congr
-    ext m
-    congr
-    ext n
-    congr 1
-    simp only [UpperHalfPlane.coe]
-    have hz := ne_zero z
-    rw [← neg_ne_zero] at hz
-    field_simp
+    grind only
 
 
-
-/-This is from the modforms repo, so no need to prove it. -/
 theorem series_eql' (z : ℍ) :
     ↑π * Complex.I - 2 * ↑π * Complex.I * ∑' n : ℕ, Complex.exp (2 * ↑π * Complex.I * z * n) =
       1 / z + ∑' n : ℕ+, (1 / ((z : ℂ) - n) + 1 / (z + n)) := by
-    have := EisensteinSeries_Identity z
-    rw [this]
-    congr
-    ext n
-    rw [← Complex.exp_nat_mul]
-    ring_nf
+  rw [EisensteinSeries_Identity z]
+  congr
+  ext n
+  rw [← Complex.exp_nat_mul]
+  ring_nf
 
 theorem extracted_summable (z : ℍ) (n : ℕ+) : Summable fun m : ℕ ↦
     cexp (2 * ↑π * Complex.I * (-↑↑n / ↑z) * ↑m) := by
-  have A1 := a1 1 1 ⟨ -n / z , pnat_div_upper n z⟩
-  simp at A1
-  apply A1
+  simpa using a1 1 1 ⟨-n / z, pnat_div_upper n z⟩
 
 theorem tsum_exp_tendsto_zero (z : ℍ) :
     Tendsto (fun x : ℕ+ ↦ 2 / ↑z * 2 * ↑π * Complex.I *
     ∑' (n : ℕ), cexp (2 * ↑π * Complex.I * (-↑↑x / ↑z) * ↑n)) atTop (𝓝 (4 * ↑π * Complex.I / ↑z))
     := by
-  rw [show 4 * ↑π * Complex.I / ↑z = 2 / ↑z * 2 * ↑π * Complex.I + 0 by ring]
-  conv =>
-    enter [1]
-    ext n
-    rw [← tsum_pnat_eq_tsum_succ4 _ (by apply extracted_summable z n), mul_add]
-  simp only [CharP.cast_eq_zero, mul_zero, exp_zero, mul_one, add_zero]
-  nth_rw 3 [
-      show 2 / ↑z * 2 * ↑π * Complex.I =
-        2 / ↑z * 2 * ↑π * Complex.I + 2 / ↑z * 2 * ↑π * Complex.I * 0 by ring
-    ]
-  apply Tendsto.add
-  · simp only [tendsto_const_nhds_iff]
-  apply Tendsto.mul
-  · simp
-  have := tendsto_tsum_of_dominated_convergence (𝓕 := atTop) (g := fun (n : ℕ+) => (0 : ℂ))
-    (f := fun d : ℕ+ => fun n : ℕ+ => cexp (2 * ↑π * Complex.I * (-↑↑d / ↑z) * n) )
-    (bound := fun n : ℕ+ => (‖(cexp (2 * ↑π * Complex.I * (-1 / ↑z)))^ (Subtype.val n)‖))
-  simp only [tsum_zero] at this
-  apply this
-  · have hs : Summable fun n : ℕ ↦ ‖cexp (2 * ↑π * Complex.I * (-1 / ↑z)) ^ n‖ := by
-      simpa [summable_geometric_iff_norm_lt_one, Real.norm_eq_abs] using
-      (exp_upperHalfPlane_lt_one ⟨-1 / z, by simpa using (pnat_div_upper 1 z)⟩)
-    apply Summable.subtype hs
-  · intro k
-    have : (fun x : ℕ+ ↦ cexp (2 * ↑π * Complex.I * (-↑↑(x : ℂ) / ↑z) * ↑k)) =
-    (fun x : ℕ+ ↦ (cexp (2 * ↑π * Complex.I * (-↑↑(k : ℂ) / ↑z))) ^ (x : ℕ)) := by
-      ext n
-      rw [← exp_nsmul]
-      congr
-      simp only [nsmul_eq_mul]
-      ring
-    rw [this]
-    have ht : Tendsto (fun x : ℕ ↦ cexp (2 * ↑π * Complex.I * (-↑k / ↑z)) ^ ↑x) atTop (𝓝 0) := by
-      rw [tendsto_zero_iff_norm_tendsto_zero]
-      simp only [norm_pow, tendsto_pow_atTop_nhds_zero_iff, abs_norm]
-      apply exp_upperHalfPlane_lt_one ⟨-k / z, by simpa using (pnat_div_upper k z)⟩
-    apply tendsto_comp_val_Ioi_atTop.mpr ht
-  · simp only [eventually_atTop, ge_iff_le]
-    use 1
-    intro b hb k
-    have : cexp (2 * ↑π * Complex.I * (-↑↑b / ↑z) * (k : ℕ)) =
-      ((cexp (2 * ↑π * Complex.I * (- 1 / ↑z)) ^ (k: ℕ)) ^ (b : ℕ)) := by
-      rw [← pow_mul, ← exp_nsmul]
-      congr
-      simp only [nsmul_eq_mul, Nat.cast_mul]
-      ring
-    rw [this]
-    simp only [norm_pow, ge_iff_le]
-    rw [← pow_mul]
-    apply Bound.pow_le_pow_right_of_le_one_or_one_le ?_
-    right
-    constructor
-    · apply norm_nonneg
-    · have := exp_upperHalfPlane_lt_one ⟨- 1 / z, by simpa using (pnat_div_upper 1 z)⟩
-      constructor
-      · apply this.le
-      exact Nat.le_mul_of_pos_right k hb
+  -- Reduce to the geometric series formula.
+  set r : ℂ := cexp (2 * ↑π * Complex.I * (-1 / (z : ℂ)))
+  have hr : ‖r‖ < 1 := by
+    simpa [r] using exp_upperHalfPlane_lt_one ⟨-1 / z, by simpa using pnat_div_upper 1 z⟩
+  have hr0 : Tendsto (fun x : ℕ+ ↦ cexp (2 * ↑π * Complex.I * (-↑↑x / ↑z))) atTop (𝓝 (0 : ℂ)) := by
+    have hxr :
+        (fun x : ℕ+ ↦ cexp (2 * ↑π * Complex.I * (-↑↑x / ↑z))) = fun x : ℕ+ ↦ r ^ (x : ℕ) := by
+      funext x
+      have hx :
+          2 * ↑π * Complex.I * (-↑↑x / ↑z) =
+            (x : ℕ) * (2 * ↑π * Complex.I * (-1 / ↑z)) := by
+        simp [div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm]
+      simpa [r, hx] using (Complex.exp_nat_mul (2 * ↑π * Complex.I * (-1 / ↑z)) (x : ℕ))
+    have hp : Tendsto (fun n : ℕ ↦ r ^ n) atTop (𝓝 (0 : ℂ)) :=
+      tendsto_pow_atTop_nhds_zero_of_norm_lt_one hr
+    have hp' : Tendsto (fun x : ℕ+ ↦ r ^ (x : ℕ)) atTop (𝓝 (0 : ℂ)) :=
+      tendsto_comp_val_Ioi_atTop.mpr hp
+    simpa [hxr] using hp'
+  have htsum :
+      Tendsto (fun x : ℕ+ ↦ ∑' n : ℕ, cexp (2 * ↑π * Complex.I * (-↑↑x / ↑z) * ↑n)) atTop
+        (𝓝 (1 : ℂ)) := by
+    have hgeom :
+        (fun x : ℕ+ ↦ ∑' n : ℕ, cexp (2 * ↑π * Complex.I * (-↑↑x / ↑z) * ↑n)) =
+          fun x : ℕ+ ↦ (1 - cexp (2 * ↑π * Complex.I * (-↑↑x / ↑z)))⁻¹ := by
+      funext x
+      set ξ : ℂ := cexp (2 * ↑π * Complex.I * (-↑↑x / ↑z))
+      have hξ : ‖ξ‖ < 1 := by
+        simpa [ξ] using exp_upperHalfPlane_lt_one ⟨-x / z, by simpa using pnat_div_upper x z⟩
+      have hterm :
+          (fun n : ℕ ↦ cexp (2 * ↑π * Complex.I * (-↑↑x / ↑z) * ↑n)) = fun n : ℕ ↦ ξ ^ n := by
+        funext n
+        simpa [ξ, mul_assoc, mul_left_comm, mul_comm] using
+          (Complex.exp_nat_mul (2 * ↑π * Complex.I * (-↑↑x / ↑z)) n)
+      simpa [hterm] using (tsum_geometric_of_norm_lt_one (ξ := ξ) hξ)
+    have h1 :
+        Tendsto (fun x : ℕ+ ↦ 1 - cexp (2 * ↑π * Complex.I * (-↑↑x / ↑z))) atTop (𝓝 (1 : ℂ)) := by
+      simpa using (tendsto_const_nhds.sub hr0)
+    have h1inv :
+        Tendsto (fun x : ℕ+ ↦ (1 - cexp (2 * ↑π * Complex.I * (-↑↑x / ↑z)))⁻¹) atTop
+          (𝓝 (1 : ℂ)) := by
+      simpa using (h1.inv₀ (by simp))
+    simpa [hgeom] using h1inv
+  -- Reinsert the constant prefactor.
+  have :=
+    (tendsto_const_nhds.mul htsum : Tendsto
+      (fun x : ℕ+ ↦ (2 / ↑z * 2 * ↑π * Complex.I) *
+        (∑' n : ℕ, cexp (2 * ↑π * Complex.I * (-↑↑x / ↑z) * ↑n))) atTop
+        (𝓝 ((2 / ↑z * 2 * ↑π * Complex.I) * (1 : ℂ))))
+  have h22 : (2 : ℂ) * 2 = 4 := by norm_num
+  simpa [div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm, h22] using this
 
 
 theorem extracted_12 (z : ℍ) :
@@ -211,23 +191,19 @@ theorem extracted_12 (z : ℍ) :
     have : (fun n : ℕ+ => (2 / (z : ℂ) * ∑' (m : ℕ+),
      (1 / (-(n : ℂ) / ↑z - ↑↑m) + 1 / (-↑↑n / ↑z + ↑↑m)))) = (fun N : ℕ+ =>
       (2 / (z : ℂ) * (↑π * Complex.I - 2 * ↑π * Complex.I *
-      ∑' n : ℕ, Complex.exp (2 * ↑π * Complex.I * (-N / z) * n) - z / -N))) := by
+      ∑' n : ℕ, Complex.exp (2 * ↑π * Complex.I * (-(N : ℂ) / z) * n) - z / (-(N : ℂ))))) := by
       funext N
-      set Z : ℍ := ⟨-N / z, pnat_div_upper N z⟩
+      set Z : ℍ := ⟨-(N : ℂ) / z, by simpa using pnat_div_upper N z⟩
       have hS := series_eql' Z
-      simp [Z] at *
-      rw [← sub_eq_iff_eq_add'] at hS
-      left
-      have hSS := hS.symm
-      apply hSS
+      grind only
     rw [this]
     have h3 : (fun N : ℕ+ =>
         (2 / (z : ℂ) * (↑π * Complex.I - 2 * ↑π * Complex.I *
-        ∑' n : ℕ, Complex.exp (2 * ↑π * Complex.I * (-N / z) * n) - z / -N))) =
+        ∑' n : ℕ, Complex.exp (2 * ↑π * Complex.I * (-(N : ℂ) / z) * n) - z / (-(N : ℂ))))) =
         (fun N : ℕ+ => ((2 / (z : ℂ)) * ↑π * Complex.I - ((2 / z) * 2 * ↑π * Complex.I *
-          ∑' n : ℕ, Complex.exp (2 * ↑π * Complex.I * (-N / z) * n)) - 2 / -N)) := by
+          ∑' n : ℕ, Complex.exp (2 * ↑π * Complex.I * (-(N : ℂ) / z) * n)) - 2 / (-(N : ℂ)))) := by
         funext N
-        have hz : 2 / -(N : ℂ) = (2 / z) * (z / -N) := by
+        have hz : 2 / (-(N : ℂ)) = (2 / z) * (z / (-(N : ℂ))) := by
           have : (z : ℂ) ≠ 0 := ne_zero z
           field_simp
         rw [hz]
@@ -243,16 +219,17 @@ theorem extracted_12 (z : ℍ) :
     have := tendsto_const_div_pow 2 1 (Nat.one_ne_zero)
     rw [Metric.tendsto_atTop] at *
     simp only [one_div, gt_iff_lt, ge_iff_le, pow_one, dist_zero_right, norm_div, Real.norm_ofNat,
-      Real.norm_natCast, norm_ofNat, norm_neg, norm_natCast] at *
+      Real.norm_natCast, norm_ofNat, norm_neg] at *
     intro ε hε
     have ht := this ε hε
     obtain ⟨N,HN ⟩ := ht
     use ⟨(N + 1), Nat.zero_lt_succ N⟩
     intro n hn
-    apply HN n ?_
-    rw [← PNat.coe_le_coe ] at hn
-    simp at hn
-    omega
+    have hn1 : N + 1 ≤ (n : ℕ) := by
+      have : ((⟨N + 1, Nat.zero_lt_succ N⟩ : ℕ+) : ℕ) ≤ n := (PNat.coe_le_coe _ _).2 hn
+      simpa using this
+    have hn' : N ≤ (n : ℕ) := Nat.le_trans (Nat.le_succ N) hn1
+    simpa [RCLike.norm_natCast] using HN (n : ℕ) hn'
   rw [Metric.tendsto_atTop] at *
   simp only [gt_iff_lt, ge_iff_le, one_div, neg_mul] at *
   intro ε hε
@@ -298,15 +275,7 @@ theorem PS3tn22 (z : ℍ) :
   rw [this]
   rw [show -2 * ↑π * Complex.I / ↑z = 0 + -2 * ↑π * Complex.I / ↑z by ring]
   apply Tendsto.add
-  · have : Tendsto (fun x : ℕ ↦ -2 / (x : ℂ)) atTop (𝓝 0) := by
-        have := Filter.Tendsto.const_div_atTop (g := fun n : ℕ => ‖(n : ℂ)‖) (r := 2) (l := atTop)
-          ?_
-        · rw [tendsto_zero_iff_norm_tendsto_zero]
-          simpa only [norm_div, norm_neg, norm_ofNat, norm_natCast] using this
-        simp only [norm_natCast]
-        exact tendsto_natCast_atTop_atTop
-    have H := nat_tendsto_pnat _ _ this
-    exact H
+  · exact nat_tendsto_pnat _ _ (tendsto_const_div_atTop_nhds_zero_nat (-2 : ℂ))
   · conv =>
       enter [1]
       ext n
@@ -318,49 +287,44 @@ theorem PS3tn22 (z : ℍ) :
 lemma PS3 (z : ℍ) : limUnder atTop
   (fun N : ℕ => ∑ n ∈ (Finset.Ico (-(N : ℤ)) (N : ℤ)),
     ∑' m : ℤ , (1 / ((m : ℂ) * z + n) - 1 / (m * z + n + 1))) = -2 * π * Complex.I / z := by
-  apply Filter.Tendsto.limUnder_eq
-  apply pnat_tendsto_nat
-  apply PS3tn22
+  refine Filter.Tendsto.limUnder_eq ?_
+  exact pnat_tendsto_nat _ _ (PS3tn22 z)
 
 
-theorem poly_id (z : ℍ) (b n : ℤ) :
+/-- An algebraic identity used to rewrite terms in the transformed `G₂` series. -/
+public theorem poly_id (z : ℍ) (b n : ℤ) :
   ((b : ℂ) * ↑z + ↑n + 1)⁻¹ * (((b : ℂ) * ↑z + ↑n) ^ 2)⁻¹ + (δ b n) +
     (((b : ℂ) * ↑z + ↑n)⁻¹ - ((b : ℂ) * ↑z + ↑n + 1)⁻¹) =
     (((b : ℂ) * ↑z + ↑n) ^ 2)⁻¹ := by
   by_cases h : b = 0 ∧ n = 0
-  · rw [h.1, h.2]
-    simp
-  simp at h
+  · simp [δ, h.1, h.2]
+  have hn0_of_b0 : b = 0 → n ≠ 0 := fun hb hn => h ⟨hb, hn⟩
   by_cases hb : b = 0
-  · by_cases hn : n = -1
-    · simp [hb, hn]
+  · subst hb
+    by_cases hn : n = -1
+    · simp [δ, hn]
       ring
-    have hj := h hb
-    have hd : δ 0 n = 0 := by
-      simp [δ, hj, hn]
-    simp [hd, hb]
-    have hn0 : (n : ℂ) ≠ 0 := by aesop
+    have hn0 : (n : ℂ) ≠ 0 := by exact_mod_cast (hn0_of_b0 rfl)
     have hn1 : (n : ℂ) + 1 ≠ 0 := by
-      norm_cast
-      omega
-    field_simp
+      have : (n : ℂ) ≠ (-1 : ℂ) := by exact_mod_cast hn
+      simpa [add_eq_zero_iff_eq_neg] using this
+    have hδ : δ 0 n = 0 := by simp [δ, hn0_of_b0 rfl, hn]
+    simp [hδ]
+    field_simp [hn0, hn1]
     ring
-  have : δ b n = 0 := by simp [δ, hb]
-  rw [this]
-  simp
-  have h : ![(b : ℝ), n + 1] ≠ 0 := by
-    aesop
-  have hh : ![(b : ℝ), n ] ≠ 0 := by
-    aesop
-  have h0 : ((b : ℂ) * ↑z + ↑n + 1) ≠ 0 := by
-    have := linear_ne_zero (cd := ![b, n + 1]) z h
-    simp at this
-    norm_cast at this
-    rw [@AddSemigroup.add_assoc]
-    aesop
-  have h1 : ((b : ℂ) * ↑z + ↑n) ≠ 0 := by
-    have := linear_ne_zero (cd := ![b, n]) z hh
-    simpa using this
+  have hδ : δ b n = 0 := by simp [δ, hb]
+  have hbR : (b : ℝ) ≠ 0 := by exact_mod_cast hb
+  have hcd1 : (![(b : ℝ), n + 1] : Fin 2 → ℝ) ≠ 0 := by
+    intro h0
+    exact hbR (by simpa using congrArg (fun v : Fin 2 → ℝ => v 0) h0)
+  have hcd0 : (![(b : ℝ), n] : Fin 2 → ℝ) ≠ 0 := by
+    intro h0
+    exact hbR (by simpa using congrArg (fun v : Fin 2 → ℝ => v 0) h0)
+  have h0 : (b : ℂ) * (z : ℂ) + n + 1 ≠ 0 := by
+    simpa [add_assoc] using (linear_ne_zero (cd := ![(b : ℝ), n + 1]) z hcd1)
+  have h1 : (b : ℂ) * (z : ℂ) + n ≠ 0 := by
+    simpa using (linear_ne_zero (cd := ![(b : ℝ), n]) z hcd0)
+  simp [hδ]
   field_simp [h0, h1]
   ring
 
@@ -370,7 +334,7 @@ theorem extracted_66c (z : ℍ) :
   fun N : ℕ ↦
     ∑' (n : ℤ), ∑ x ∈ Finset.Icc (-↑N : ℤ) ↑N, (((n : ℂ) * ↑z + ↑x) ^ 2)⁻¹ := by
   ext N
-  simp
+  simp only [inv_neg, mul_neg, Pi.mul_apply]
   rw [Finset.mul_sum]
   rw [Summable.tsum_finsetSum]
   · congr
@@ -379,27 +343,18 @@ theorem extracted_66c (z : ℍ) :
     rw [int_sum_neg]
     congr
     ext d
-    have hz := ne_zero z
-    rw [← mul_inv]
-    congr 1
-    rw [show ((d : ℂ) * ↑z + ↑n) ^ 2 = (-↑d * ↑z - ↑n) ^ 2 by ring, ← mul_pow]
-    congr
-    field_simp
-    simp only [UpperHalfPlane.coe]
-    ring_nf
-    simp_all only [ne_eq, Int.cast_neg, mul_neg]
-    rfl
+    have hz : (z : ℂ) ≠ 0 := by simpa using (ne_zero z)
+    grind only
   · intro i hi
     exact extracted_77 z i
 
 theorem extracted_6 (z : ℍ) : CauchySeq fun N : ℕ ↦ ∑ n ∈ Finset.Ico (-(N : ℤ)) ↑N,
   ∑' (m : ℤ), (1 / ((m : ℂ) * ↑z + ↑n) - 1 / (↑m * ↑z + ↑n + 1)) := by
-  have := PS3tn22 z
-  apply Filter.Tendsto.cauchySeq
-  · apply pnat_tendsto_nat
-    apply this
+  refine Filter.Tendsto.cauchySeq (x := (-2 * π * Complex.I / z)) ?_
+  exact pnat_tendsto_nat _ _ (PS3tn22 z)
 
-lemma G2_inde_lhs (z : ℍ) : (z.1 ^ 2)⁻¹ * G₂ (ModularGroup.S • z) - -2 * π * Complex.I / z =
+/-- An `ℤ × ℤ` reindexing of the transformed `G₂` expression on the left-hand side. -/
+public lemma G2_inde_lhs (z : ℍ) : (z.1 ^ 2)⁻¹ * G₂ (ModularGroup.S • z) - -2 * π * Complex.I / z =
   ∑' n : ℤ, ∑' m : ℤ, (1 / (((m : ℂ)* z +n)^2 * (m * z + n +1)) + δ m n) := by
   rw [G2_S_act, ← PS3 z, tsum_limUnder_atTop, limUnder_sub]
   · congr
@@ -434,15 +389,14 @@ lemma G2_inde_lhs (z : ℍ) : (z.1 ^ 2)⁻¹ * G₂ (ModularGroup.S • z) - -2 
       ext N
       rw [← Summable.tsum_finsetSum (by intro i hi; simp only [one_div]; exact extracted_77 z i)]
     have := G2_cauchy ⟨-1 / z, by simpa using pnat_div_upper 1 z⟩
-    have hC := cauchy_seq_mul_const _ ((z : ℂ) ^ 2)⁻¹ (by simp [ne_zero z]) this
+    have hC := cauchy_seq_mul_const _ ((z : ℂ) ^ 2)⁻¹ this
     apply hC.congr
     have H := extracted_66c z
-    simp at *
+    simp only [one_div] at *
     rw [← H]
     ext N
-    simp only [Pi.mul_apply, Pi.smul_apply, smul_eq_mul, mul_eq_mul_left_iff, inv_eq_zero, ne_eq,
-      OfNat.ofNat_ne_zero, not_false_eq_true, pow_eq_zero_iff]
-    left
+    simp only [Pi.mul_apply, Pi.smul_apply, smul_eq_mul]
+    apply mul_left_cancel₀ (by simpa using inv_ne_zero (pow_ne_zero 2 (ne_zero z)))
     congr
     ext n
     congr
@@ -462,25 +416,22 @@ lemma G2_inde_lhs (z : ℍ) : (z.1 ^ 2)⁻¹ * G₂ (ModularGroup.S • z) - -2 
 lemma PS1 (z : ℍ) (m : ℤ) : limUnder atTop
   (fun N : ℕ => ∑ n ∈ (Finset.Ico (-(N : ℤ)) (N : ℤ)),
     (1 / ((m : ℂ) * z + n) - 1 / (m * z + n + 1))) = 0 := by
-  apply Filter.Tendsto.limUnder_eq
-  have : (fun N : ℕ => ∑ n ∈ (Finset.Ico (-(N : ℤ)) (N : ℤ)),
-    (1 / ((m : ℂ) * z + n) - 1 / (m * z + n + 1))) =
-    (fun N : ℕ => (1 / ((m : ℂ) * z - N) - 1 / (m * z + N))) := by
-    funext N
-    rw [telescope_aux]
-  rw [this]
-  have h0 := tendsto_zero_inv_linear z m
-  have h1 := tendsto_zero_inv_linear_sub z m
-  have h2 := Filter.Tendsto.sub h1 h0
-  simpa using h2
+  refine Filter.Tendsto.limUnder_eq ?_
+  -- Telescoping sum and known `tendsto` facts.
+  have htel :
+      (fun N : ℕ => ∑ n ∈ Finset.Ico (-(N : ℤ)) (N : ℤ),
+          (1 / ((m : ℂ) * z + n) - 1 / (m * z + n + 1))) =
+        fun N : ℕ => 1 / ((m : ℂ) * z - N) - 1 / (m * z + N) := by
+    ext N
+    simpa using telescope_aux z m N
+  rw [htel]
+  simpa using (tendstozero_inv_linear_neg z m).sub (tendstozero_inv_linear z m)
 
 
 lemma PS2 (z : ℍ) : ∑' m : ℤ, (limUnder atTop
   (fun N : ℕ => ∑ n ∈ (Finset.Ico (-(N : ℤ)) (N : ℤ)),
     (1 / ((m : ℂ) * z + n) - 1 / (m * z + n + 1)))) = 0 := by
-    convert tsum_zero
-    next m =>
-    apply PS1
+  simpa using (tsum_congr fun m => (PS1 z m))
 
 lemma auxr (z : ℍ) (b : ℤ) :
     ((limUnder atTop fun N : ℕ ↦
@@ -495,8 +446,8 @@ lemma auxr (z : ℍ) (b : ℤ) :
     ∑ n ∈ Finset.Ico (-N : ℤ) N, (1 / ((b : ℂ) * ↑z + ↑n) - 1 / (↑b * ↑z + ↑n + 1)))
       (extracted_2_δ z b) (by apply extracted_3 z b)
   rw [this]
-  apply limUnder_congr_eventually _ _ _
-    (by apply CauchySeq.add (extracted_2_δ z b) (extracted_3 z b)) (by apply extracted_4 z b)
+  refine limUnder_congr_eventually _ _ ?_ (by
+    apply CauchySeq.add (extracted_2_δ z b) (extracted_3 z b))
   simp only [one_div, mul_inv_rev, Pi.add_apply, eventually_atTop,
     ge_iff_le]
   use 1
@@ -515,6 +466,11 @@ lemma G2_alt_eq (z : ℍ) : G₂ z = ∑' m : ℤ, ∑' n : ℤ,
   set t := ∑' m : ℤ, ∑' n : ℤ, (1 / (((m : ℂ) * z + n) ^ 2 * (m * z + n + 1)) + δ m n)
   rw [show t = t + 0 by ring, ← this]
   simp only [t]
+  have hG2AltProd :=
+    (by
+        have H := G_2_alt_summable_δ z
+        rw [← (finTwoArrowEquiv _).symm.summable_iff] at H
+        exact H.prod)
   rw [← Summable.tsum_add]
   · rw [tsum_limUnder_atTop]
     · congr
@@ -524,70 +480,51 @@ lemma G2_alt_eq (z : ℍ) : G₂ z = ∑' m : ℤ, ∑' n : ℤ,
       rw [tsum_limUnder_atTop, tsum_limUnder_atTop, auxr z m]
       · have H := G2_prod_summable1_δ z m
         simpa using H
-      · have H := G2_summable_aux m z 2 (by norm_num)
+      · have H := linear_right_summable z m Int.le_rfl
         simpa using H
-    · have H := G_2_alt_summable_δ z
-      rw [← (finTwoArrowEquiv _).symm.summable_iff] at H
-      have ha := H.prod
-      apply ha.congr
+    · refine hG2AltProd.congr ?_
       intro b
       simpa using PS1 z b
-  · have H := G_2_alt_summable_δ z
-    rw [← (finTwoArrowEquiv _).symm.summable_iff] at H
-    have ha := H.prod
-    apply ha.congr
+  · refine hG2AltProd.congr ?_
     intro b
     simp only [Fin.isValue, one_div, mul_inv_rev, finTwoArrowEquiv_symm_apply, comp_apply,
       Matrix.cons_val_zero, Matrix.cons_val_one]
-  · have HS : Summable fun m : ℤ => (0 : ℂ) := by apply summable_zero
-    apply HS.congr
+  · refine (summable_zero : Summable fun _ : ℤ => (0 : ℂ)).congr ?_
     intro b
-    symm
-    apply PS1 z b
+    simpa using (PS1 z b).symm
 
 
 lemma G2_transf_aux (z : ℍ) : (z.1 ^ 2)⁻¹ * G₂ (ModularGroup.S • z) - -2 * π * Complex.I / z =
   G₂ z := by
   rw [G2_inde_lhs, G2_alt_eq z , ← G2_alt_indexing2_δ , G2_alt_indexing_δ]
 
-lemma ModularGroup.coe_mul (A B : SL(2, ℤ)) :
+@[simp] public lemma ModularGroup.coe_mul (A B : SL(2, ℤ)) :
     (ModularGroup.coe A) * B = ModularGroup.coe (A * B) := by
-  have : Matrix.SpecialLinearGroup.toGLPos ∘ (Matrix.SpecialLinearGroup.map (Int.castRingHom ℝ)) =
-    ModularGroup.coe := by
-    funext A
-    rfl
-  let C := MonoidHom.comp Matrix.SpecialLinearGroup.toGLPos
-    (Matrix.SpecialLinearGroup.map (n := Fin 2) (Int.castRingHom ℝ))
-  have hC : C = ModularGroup.coe := by
-    rw [← this]
-    rfl
-  have := C.map_mul A B
-  rw [hC] at this
-  exact this.symm
+  simp [ModularGroup.coe]
 
 lemma denom_diff (A B : SL(2, ℤ)) (z : ℍ) : ((A * B) 1 0) * (denom B z) =
   (A 1 0) * B.1.det + (B 1 0) * denom (A * B) z := by
-  simp_rw [← map_mul]
-  simp_rw [ModularGroup.denom_apply]
   have h0 := Matrix.two_mul_expl A.1 B.1
   have h1 := Matrix.det_fin_two B.1
-  simp [Fin.isValue, Matrix.SpecialLinearGroup.coe_mul, h0.2.2.1, Int.cast_add, Int.cast_mul,
-    h1, Int.cast_sub, h0.2.2.2]
+  simp_rw [← map_mul, ModularGroup.denom_apply]
+  simp [Fin.isValue, Matrix.SpecialLinearGroup.coe_mul, h0.2.2.1, Int.cast_add, Int.cast_mul, h1,
+    Int.cast_sub, h0.2.2.2]
   ring
 
 
 @[simp]
 lemma denom_sim (A : SL(2, ℤ)) (z : ℍ) :
-    denom (toGL ((Matrix.SpecialLinearGroup.map (Int.castRingHom ℝ)) A)) z = denom (coe2 A) z := by
-      rfl
+    denom (toGL ((Matrix.SpecialLinearGroup.map (Int.castRingHom ℝ)) A)) z = denom (coe2 A) z :=
+  rfl
 
 @[simp]
 lemma coe2_smul (A : SL(2, ℤ)) (z : ℍ) :
-  (toGL ((Matrix.SpecialLinearGroup.map (Int.castRingHom ℝ)) A)) • z = (coe2 A) • z := by rfl
+  (toGL ((Matrix.SpecialLinearGroup.map (Int.castRingHom ℝ)) A)) • z = (coe2 A) • z :=
+  rfl
 
 lemma D2_mul (A B : SL(2, ℤ)) : D₂ (A * B) = ((D₂ A) ∣[(2 : ℤ)] B) + (D₂ B):= by
   ext z
-  have := denom_cocycle A B z.im_ne_zero
+  have hco := denom_cocycle A B z.im_ne_zero
   simp_rw [SL_slash_def]
   simp_rw [denom_sim]
   simp only [D₂, Fin.isValue, Matrix.SpecialLinearGroup.coe_mul, Int.reduceNeg, zpow_neg,
@@ -602,7 +539,7 @@ lemma D2_mul (A B : SL(2, ℤ)) : D₂ (A * B) = ((D₂ A) ∣[(2 : ℤ)] B) + (
   rw [ ← sub_eq_iff_eq_add] at hd
   simp only [Fin.isValue, Matrix.SpecialLinearGroup.coe_mul, Matrix.SpecialLinearGroup.det_coe,
     Int.cast_one, mul_one] at hd
-  simp only [Fin.isValue, ← hd, this, pow_two]
+  simp only [Fin.isValue, ← hd, hco, pow_two]
   have : denom (↑A) (num ↑B ↑z / denom ↑B ↑z) = denom ↑A ↑(↑B • z) := by
     congr 1
     simp [UpperHalfPlane.specialLinearGroup_apply]
@@ -616,25 +553,20 @@ lemma D2_mul (A B : SL(2, ℤ)) : D₂ (A * B) = ((D₂ A) ∣[(2 : ℤ)] B) + (
 
 
 lemma D2_one : D₂ 1 = 0 := by
-  ext z
-  simp only [D₂, Fin.isValue, Matrix.SpecialLinearGroup.coe_one, ne_eq, one_ne_zero,
-    not_false_eq_true, Matrix.one_apply_ne, Int.cast_zero, mul_zero, zero_div, Pi.zero_apply]
+  ext z; simp [D₂]
 
 lemma D2_inv (A : SL(2, ℤ)) : (D₂ A)∣[(2 : ℤ)] A⁻¹ = - D₂ (A⁻¹) := by
-  have := D2_mul A A⁻¹
-  simp only [mul_inv_cancel, SL_slash] at this
-  rw [D2_one] at this
-  apply eq_neg_of_add_eq_zero_left (_root_.id (Eq.symm this))
+  have h : (D₂ A)∣[(2 : ℤ)] A⁻¹ + D₂ (A⁻¹) = 0 := by
+    simpa [mul_inv_cancel, SL_slash, D2_one] using (D2_mul A A⁻¹).symm
+  exact eq_neg_of_add_eq_zero_left h
 
 
 lemma D2_T : D₂ ModularGroup.T = 0 := by
-  ext z
-  simp [D₂, ModularGroup.T]
+  ext z; simp [D₂, ModularGroup.T]
 
 lemma D2_S (z : ℍ) : D₂ ModularGroup.S z = 2 * (π : ℂ) * Complex.I / z := by
   simp [D₂, ModularGroup.S, ModularGroup.denom_apply]
 
-/-This is being PRd-/
 lemma SL2_gens : Subgroup.closure {ModularGroup.S, ModularGroup.T} = ⊤ := by
   exact SpecialLinearGroup.SL2Z_generators
 
@@ -654,11 +586,10 @@ theorem modular_slash_T_apply : (f ∣[k] ModularGroup.T) z = f ((1 : ℝ) +ᵥ 
 
 
 lemma G₂_eq_G₂_a (z : ℍ) : G₂ z = G₂_a z := by
-  rw [G₂]
-  rw [G₂_a]
+  rw [G₂, G₂_a]
   rw [Filter.Tendsto.limUnder_eq]
   have := CauchySeq.tendsto_limUnder (G2_cauchy z)
-  apply rest _ _ _ this
+  apply tendsto_of_tendsto_sub _ _ _ this
   have h0 := cc _ (G2_cauchy z) ?_
   conv =>
     enter [1]
@@ -677,96 +608,82 @@ lemma G₂_eq_G₂_a (z : ℍ) : G₂ z = G₂_a z := by
     simp only [one_div, Int.cast_neg, neg_mul, inv_inj]
     ring
 
-lemma G2_q_exp (z : ℍ) : G₂ z = (2 * riemannZeta 2) - 8 * π ^ 2 *
-  ∑' n : ℕ+, sigma 1 n * cexp (2 * π * Complex.I * n * z) := by
-  rw [G₂_eq_G₂_a, G₂_a, Filter.Tendsto.limUnder_eq]
-  rw [t8 z]
-  rw [sub_eq_add_neg]
-  apply Filter.Tendsto.add
-  · simp only [tendsto_const_nhds_iff]
-  · have := G2_c_tendsto z
-    simp only [UpperHalfPlane.coe, neg_mul, even_two, Even.neg_pow, Nat.add_one_sub_one,
-      Nat.factorial_one, Nat.cast_one, div_one, pow_one] at *
-    apply this
+/-- Fourier expansion of `G₂` as a constant term plus an exponential series. -/
+public lemma G2_q_exp (z : ℍ) : G₂ z = (2 * riemannZeta 2) - 8 * π ^ 2 *
+    ∑' n : ℕ+, sigma 1 n * cexp (2 * π * Complex.I * n * z) := by
+  rw [G₂_eq_G₂_a, G₂_a]
+  refine Filter.Tendsto.limUnder_eq ?_
+  rw [t8 z, sub_eq_add_neg]
+  refine tendsto_const_nhds.add ?_
+  simpa [neg_mul, even_two, Even.neg_pow, Nat.add_one_sub_one, Nat.factorial_one, Nat.cast_one,
+    div_one, pow_one] using G2_c_tendsto z
 
 lemma G2_periodic : (G₂ ∣[(2 : ℤ)] ModularGroup.T) = G₂ := by
   ext z
-  simp only [ SL_slash_def, Int.reduceNeg, zpow_neg]
-  have := UpperHalfPlane.modular_T_smul z
-  rw [this, ModularGroup.denom_apply]
-  simp only [G2_q_exp, coe_vadd, ofReal_one, ModularGroup.T, Fin.isValue, Matrix.of_apply,
-    Matrix.cons_val', Matrix.cons_val_zero, Matrix.empty_val', Matrix.cons_val_fin_one,
-    Matrix.cons_val_one, Int.cast_zero, zero_mul,
-    Int.cast_one, zero_add, one_zpow, inv_one, mul_one, sub_right_inj, mul_eq_mul_left_iff,
-    mul_eq_zero, OfNat.ofNat_ne_zero, ne_eq, not_false_eq_true, pow_eq_zero_iff, ofReal_eq_zero,
-    false_or]
-  left
-  congr
-  ext n
-  simp only [mul_eq_mul_left_iff, Nat.cast_eq_zero]
-  left
-  apply exp_periodo
+  rw [modular_slash_T_apply, G2_q_exp, G2_q_exp]
+  congr 2
+  refine tsum_congr ?_
+  intro n
+  congr 1
+  -- `exp_periodo` is stated with `(1 + z)`; rewrite `((1 : ℝ) +ᵥ z)` accordingly.
+  simpa [coe_vadd, add_comm, add_left_comm, add_assoc] using exp_periodo z (n : ℕ)
 
-/-- E₂ is 1-periodic: E₂(z + 1) = E₂(z) -/
-lemma E₂_periodic (z : ℍ) : E₂ ((1 : ℝ) +ᵥ z) = E₂ z := by
+/-- The Eisenstein series `E₂` is 1-periodic: `E₂ ((1 : ℝ) +ᵥ z) = E₂ z`. -/
+public lemma E₂_periodic (z : ℍ) : E₂ ((1 : ℝ) +ᵥ z) = E₂ z := by
   have h := congrFun G2_periodic z
   rw [modular_slash_T_apply] at h
   simp only [E₂, Pi.smul_apply, smul_eq_mul, h]
 
-/-This is the annoying exercise. -/
-lemma G₂_transform (γ : SL(2, ℤ)) : (G₂ ∣[(2 : ℤ)] γ) = G₂ - (D₂ γ) := by
-  have := Subgroup.closure_induction (G := SL(2, ℤ)) (p := fun γ _ ↦ G₂ ∣[(2 : ℤ)] γ = G₂ - (D₂ γ))
-    (k := ({ModularGroup.S, ModularGroup.T})) ?_ ?_
-  · apply this
-    · intro a b ha hb HA HB
-      rw [D2_mul, SlashAction.slash_mul, HA, sub_eq_add_neg, SlashAction.add_slash, HB]
-      ext z
-      simp only [SlashAction.neg_slash, SL_slash, Pi.add_apply, Pi.sub_apply, Pi.neg_apply]
-      ring
-    · intro g hg hg2
-      have H1 : (G₂ ∣[(2 : ℤ)] g) ∣[(2 : ℤ)] g⁻¹ = (G₂ - D₂ g)∣[(2 : ℤ)] g⁻¹ := by
-        rw [hg2]
-      rw [← SlashAction.slash_mul, sub_eq_add_neg, SlashAction.add_slash] at H1
-      simp only [mul_inv_cancel, SlashAction.slash_one, SL_slash, SlashAction.neg_slash] at H1
-      nth_rw 2 [H1]
-      rw [← sub_eq_add_neg]
-      have := D2_inv g
-      simp only [SL_slash] at this
-      rw [this]
-      simp only [SL_slash, sub_neg_eq_add, add_sub_cancel_right]
-    · rw [SL2_gens]
-      simp only [Subgroup.mem_top]
-  · intro a ha
-    simp only [mem_insert_iff, mem_singleton_iff, SL_slash] at *
-    rcases ha with h1|h2
+/-- The modular transformation law for `G₂`, with the correction term `D₂`. -/
+public lemma G₂_transform (γ : SL(2, ℤ)) : (G₂ ∣[(2 : ℤ)] γ) = G₂ - (D₂ γ) := by
+  refine
+    Subgroup.closure_induction (G := SL(2, ℤ))
+      (p := fun γ _ ↦ G₂ ∣[(2 : ℤ)] γ = G₂ - D₂ γ)
+      (k := ({ModularGroup.S, ModularGroup.T} : Set (SL(2, ℤ))))
+      (fun a ha => ?_) ?_ (fun a b ha hb HA HB => ?_) (fun g hg hg2 => ?_) ?_
+  · dsimp
+    rcases (by simpa [Set.mem_insert_iff, Set.mem_singleton_iff] using ha) with rfl | rfl
     · ext z
       simp only [Pi.sub_apply]
-      rw [h1, D2_S z]
-      have:= modular_slash_S_apply G₂ 2 z
-      simp only [SL_slash, Int.reduceNeg, zpow_neg] at this
+      rw [D2_S z]
+      have := modular_slash_S_apply G₂ 2 z
+      simp only [Int.reduceNeg, zpow_neg] at this
       rw [this, mul_comm]
-      have := G2_transf_aux z
-      rw [← this]
+      rw [← G2_transf_aux z]
       ring_nf
       rw [modular_S_smul]
       congr
-      · simp only [UpperHalfPlane.coe, inv_pow, inv_inj]
+      · simp [inv_pow, inv_inj]
         norm_cast
-      simp only [UpperHalfPlane.coe]
-      ring
-    · simpa only [h2, D2_T, sub_zero] using G2_periodic
+      · simp
+    · simpa [D2_T, sub_zero] using G2_periodic
   · simp only [SlashAction.slash_one, D2_one, sub_zero]
+  · dsimp at HA HB ⊢
+    rw [D2_mul, SlashAction.slash_mul, HA, sub_eq_add_neg, SlashAction.add_slash, HB]
+    ext z
+    simp only [SlashAction.neg_slash, SL_slash, Pi.add_apply, Pi.sub_apply, Pi.neg_apply]
+    ring
+  · dsimp at hg2 ⊢
+    have H1 : (G₂ ∣[(2 : ℤ)] g) ∣[(2 : ℤ)] g⁻¹ = (G₂ - D₂ g) ∣[(2 : ℤ)] g⁻¹ := by
+      simpa using congrArg (fun F => F ∣[(2 : ℤ)] g⁻¹) hg2
+    rw [← SlashAction.slash_mul, sub_eq_add_neg, SlashAction.add_slash] at H1
+    simp only [mul_inv_cancel, SlashAction.slash_one, SL_slash, SlashAction.neg_slash] at H1
+    nth_rw 2 [H1]
+    rw [← sub_eq_add_neg]
+    have := D2_inv g
+    simp only [SL_slash] at this
+    rw [this]
+    simp only [SL_slash, sub_neg_eq_add, add_sub_cancel_right]
+  · simp [SL2_gens]
 
 
-/-Should be easy from the above.-/
-lemma E₂_transform (z : ℍ) : (E₂ ∣[(2 : ℤ)] ModularGroup.S) z =
-  E₂ z + 6 / ( π * Complex.I * z) := by
-  rw [E₂]
-  have := G₂_transform (ModularGroup.S)
-  have hsm := ModularForm.SL_smul_slash (2 : ℤ) ModularGroup.S G₂ (1 / (2 * riemannZeta 2))
-  rw [hsm]
+/-- The `S`-transform of `E₂` in slash-action form. -/
+public lemma E₂_transform (z : ℍ) : (E₂ ∣[(2 : ℤ)] ModularGroup.S) z =
+    E₂ z + 6 / (π * Complex.I * z) := by
+  rw [E₂, ModularForm.SL_smul_slash (2 : ℤ) ModularGroup.S G₂ (1 / (2 * riemannZeta 2))]
+  have hG := G₂_transform (ModularGroup.S)
   simp only [SL_slash, one_div, mul_inv_rev, Pi.smul_apply, smul_eq_mul] at *
-  rw [this]
+  rw [hG]
   simp only [Pi.sub_apply]
   rw [D2_S]
   ring_nf
@@ -781,7 +698,7 @@ lemma E₂_transform (z : ℍ) : (E₂ ∣[(2 : ℤ)] ModularGroup.S) z =
   ring
 
 /-- E₂ transforms under SL(2,ℤ) as: E₂ ∣[2] γ = E₂ - α • D₂ γ where α = 1/(2ζ(2)) -/
-lemma E₂_slash_transform (γ : SL(2, ℤ)) :
+public lemma E₂_slash_transform (γ : SL(2, ℤ)) :
     (E₂ ∣[(2 : ℤ)] γ) = E₂ - (1 / (2 * riemannZeta 2)) • D₂ γ := by
   ext z
   simp [E₂, G₂_transform γ]
@@ -789,98 +706,80 @@ lemma E₂_slash_transform (γ : SL(2, ℤ)) :
 
 /-- E₂ transforms under S as: E₂(-1/z) = z² · (E₂(z) + 6/(πIz)).
     This is derived from E₂_transform by relating the slash action to the direct value. -/
-lemma E₂_S_transform (z : ℍ) :
+public lemma E₂_S_transform (z : ℍ) :
     E₂ (ModularGroup.S • z) = z ^ 2 * (E₂ z + 6 / (π * Complex.I * z)) := by
   have h := E₂_transform z
   rw [SL_slash_apply, ModularGroup.denom_S, zpow_neg, zpow_two] at h
-  have hz2 : (z : ℂ) * (z : ℂ) ≠ 0 := mul_ne_zero (ne_zero z) (ne_zero z)
-  rw [sq, mul_comm]
-  -- `only` is required here; without it simp rewrites the congrArg term structure
-  simpa only [mul_assoc, inv_mul_cancel₀ hz2, mul_one] using congrArg (· * ((z : ℂ) * (z : ℂ))) h
+  have hz : (z : ℂ) ≠ 0 := ne_zero z
+  have hz2 : (z : ℂ) * (z : ℂ) ≠ 0 := mul_ne_zero hz hz
+  have h' := congrArg (· * ((z : ℂ) * (z : ℂ))) h
+  simp only at h'
+  -- Cancel the `z^(-2)` factor coming from the slash action.
+  rw [mul_assoc, inv_mul_cancel₀ hz2, mul_one] at h'
+  simpa [sq, mul_comm, mul_left_comm, mul_assoc] using h'
 
-lemma tsum_eq_tsum_sigma (z : ℍ) : ∑' n : ℕ, (n + 1) *
+/-- Convert a geometric-series expression to a divisor-sum expression via `sigma`. -/
+public lemma tsum_eq_tsum_sigma (z : ℍ) : ∑' n : ℕ, (n + 1) *
     cexp (2 * π * Complex.I * (n + 1) * z) / (1 - cexp (2 * π * Complex.I * (n + 1) * z)) =
     ∑' n : ℕ, sigma 1 (n + 1) * cexp (2 * π * Complex.I * (n + 1) * z) := by
-  have := fun m : ℕ => tsum_choose_mul_geometric_of_norm_lt_one (r := (cexp (2 * ↑π * Complex.I *
-    ↑z))^(m+1)) 0 (by rw [← exp_aux]; simpa using exp_upperHalfPlane_lt_one_nat z m)
-  simp only [add_zero, Nat.choose_zero_right, Nat.cast_one, one_mul, zero_add, pow_one,
-    one_div] at this
-  conv =>
-    enter [1,1]
-    ext n
-    rw [show (n : ℂ) + 1 = (((n + 1) : ℕ) : ℂ) by simp only [Nat.cast_add, Nat.cast_one],
-      exp_aux, div_eq_mul_one_div]
-    simp
-    rw [← this n, ← tsum_mul_left]
-    conv =>
-      enter [1]
-      ext m
-      rw [mul_assoc, ← pow_succ' (cexp (2 * ↑π * Complex.I * ↑z) ^ (n + 1)) m ]
-  have := tsum_sigma_eqn z (k := 1)
-  conv =>
-    enter [2,1]
-    ext n
-    rw [show (n : ℂ) + 1 = (((n + 1) : ℕ) : ℂ) by simp]
-  have h1 := tsum_pnat_eq_tsum_succ3 (fun n => sigma 1 (n) * cexp (2 * π * Complex.I * (n) * z))
-  simp only [UpperHalfPlane.coe] at *
-  rw [← h1]
-  have h2 := fun n : ℕ => tsum_pnat_eq_tsum_succ3
-    ( fun m => ↑(n + 1) * (cexp (2 * ↑π * Complex.I * ↑z) ^ (n + 1)) ^ (m))
-  simp only [UpperHalfPlane.coe] at h2
-  conv =>
-    enter [1,1]
-    ext n
-    rw [show (n : ℂ) + 1 = (((n + 1) : ℕ) : ℂ) by simp only [Nat.cast_add, Nat.cast_one], ← h2 n]
-    conv =>
-      enter [1]
-      ext m
-      rw [pow_right_comm]
-  have h3 := tsum_pnat_eq_tsum_succ3
-      (fun n ↦ ∑' (m : ℕ+), ↑(n) * (cexp (2 * ↑π * Complex.I * ↑z) ^ (m : ℕ)) ^ (n))
-  simp only [UpperHalfPlane.coe] at h3
-  rw [← h3, ← this]
-  simp only [pow_one]
-  rw [Summable.tsum_prod' ]
-  · congr
-    ext n
-    congr
-    ext m
-    simp only [mul_eq_mul_left_iff, Nat.cast_eq_zero, PNat.ne_zero, or_false]
-    rw [← Complex.exp_nat_mul, ← Complex.exp_nat_mul]
-    congr 1
-    ring
-  · have := a4 2 z
-    apply this.congr
-    intro b
-    simp only [uncurry, Nat.add_one_sub_one, pow_one, UpperHalfPlane.coe, mul_eq_mul_left_iff,
-      Nat.cast_eq_zero, PNat.ne_zero, or_false]
-    ring_nf
-  · intro e
-    have := a1 2 e z
-    simp at *
-    apply this.subtype
+  -- Use the general sigma identity for geometric series from Mathlib, then shift `ℕ+` → `ℕ`.
+  set r : ℂ := cexp (2 * ↑π * Complex.I * (z : ℂ))
+  have hr : ‖r‖ < 1 := by simpa [r] using exp_upperHalfPlane_lt_one z
+  have hσ :
+      (∑' n : ℕ+, (n : ℂ) * r ^ (n : ℕ) / (1 - r ^ (n : ℕ))) =
+        ∑' n : ℕ+, (sigma 1 n : ℂ) * r ^ (n : ℕ) := by
+    simpa [pow_one] using (tsum_pow_div_one_sub_eq_tsum_sigma (𝕜 := ℂ) (r := r) hr 1)
+  -- Convert both sides of the goal to `ℕ+`-indexed sums and apply `hσ`.
+  have hL :
+      (∑' n : ℕ, (n + 1) * r ^ (n + 1) / (1 - r ^ (n + 1))) =
+        ∑' n : ℕ+, (n : ℂ) * r ^ (n : ℕ) / (1 - r ^ (n : ℕ)) := by
+    simpa [Nat.cast_add, Nat.cast_one, add_assoc, add_left_comm, add_comm] using
+      (tsum_pnat_eq_tsum_succ3 (fun n : ℕ => (n : ℂ) * r ^ n / (1 - r ^ n))).symm
+  have hR :
+      (∑' n : ℕ, sigma 1 (n + 1) * r ^ (n + 1)) =
+        ∑' n : ℕ+, (sigma 1 n : ℂ) * r ^ (n : ℕ) := by
+    simpa [Nat.cast_add, Nat.cast_one, add_assoc, add_left_comm, add_comm] using
+      (tsum_pnat_eq_tsum_succ3 (fun n : ℕ => (sigma 1 n : ℂ) * r ^ n)).symm
+  -- Rewrite the original sums as `r`-powers via `exp_aux`.
+  have hL' :
+      (∑' n : ℕ, (n + 1) * cexp (2 * π * Complex.I * (n + 1) * z) /
+          (1 - cexp (2 * π * Complex.I * (n + 1) * z))) =
+        ∑' n : ℕ, (n + 1) * r ^ (n + 1) / (1 - r ^ (n + 1)) := by
+    refine tsum_congr fun n => ?_
+    have : cexp (2 * π * Complex.I * (n + 1) * z) = r ^ (n + 1) := by
+      simpa [r, mul_assoc, mul_left_comm, mul_comm] using (exp_aux z (n + 1))
+    simp [this]
+  have hR' :
+      (∑' n : ℕ, sigma 1 (n + 1) * cexp (2 * π * Complex.I * (n + 1) * z)) =
+        ∑' n : ℕ, sigma 1 (n + 1) * r ^ (n + 1) := by
+    refine tsum_congr fun n => ?_
+    have : cexp (2 * π * Complex.I * (n + 1) * z) = r ^ (n + 1) := by
+      simpa [r, mul_assoc, mul_left_comm, mul_comm] using (exp_aux z (n + 1))
+    simp [this]
+  -- Combine.
+  grind only
 
-/- This we should get from the modular forms repo stuff. Will port these things soon. -/
-lemma E₂_eq (z : UpperHalfPlane) : E₂ z =
+/-- A standard Fourier expansion formula for `E₂`. -/
+public lemma E₂_eq (z : UpperHalfPlane) : E₂ z =
     1 - 24 * ∑' (n : ℕ+),
     ↑n * cexp (2 * π * Complex.I * n * z) / (1 - cexp (2 * π * Complex.I * n * z)) := by
   rw [E₂]
-  simp
+  simp only [one_div, mul_inv_rev, Pi.smul_apply, smul_eq_mul]
   rw [G2_q_exp]
   rw [mul_sub]
+  have hpi : (π : ℂ) ≠ 0 := ofReal_ne_zero.mpr (Real.pi_pos.ne')
   congr 1
   · rw [riemannZeta_two]
-    have hpi : (π : ℂ) ≠ 0 := by simp
-    field_simp
+    field_simp [hpi]
   · rw [← mul_assoc]
     congr 1
     · rw [riemannZeta_two]
-      have hpi : (π : ℂ) ≠ 0 := by simp
-      grind
+      field_simp [hpi]
+      ring
     · have hl := tsum_pnat_eq_tsum_succ3 (fun n => sigma 1 n * cexp (2 * π * Complex.I * n * z))
       have hr := tsum_pnat_eq_tsum_succ3 (fun n => n * cexp (2 * π * Complex.I * n * z) / (1 - cexp
         (2 * π * Complex.I * n * z)))
       rw [hl, hr]
-      have ht := tsum_eq_tsum_sigma z
-      simp at *
-      rw [ht]
+      simpa [Nat.cast_add, Nat.cast_one] using (tsum_eq_tsum_sigma z).symm
+
+end Definitions
