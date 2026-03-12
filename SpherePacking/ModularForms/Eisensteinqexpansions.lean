@@ -36,9 +36,11 @@ noncomputable section Definitions
 /-- The standard congruence condition used to define Eisenstein series at level one. -/
 @[expose] public def standardcongruencecondition : Fin 2 → ZMod ((1 : ℕ+) : ℕ) := 0
 
+
 /-- The (normalized) Eisenstein series of weight `k` as a modular form on `Γ(1)`. -/
 @[expose] public def E (k : ℤ) (hk : 3 ≤ k) : ModularForm (CongruenceSubgroup.Gamma ↑1) k :=
-  (1/2 : ℂ) • ModularForm.eisensteinSeriesMF hk standardcongruencecondition -- normalization
+  (1/2 : ℂ) • ModularForm.eisensteinSeriesMF hk standardcongruencecondition /-they need 1/2 for the
+    normalization to match up (since the sum here is taken over coprime integers).-/
 
 open Pointwise
 
@@ -233,7 +235,6 @@ lemma EQ1 (k : ℕ) (hk : 3 ≤ (k : ℤ)) (hk2 : Even k) (z : ℍ) : ∑' (x : 
     ring_nf
   · simpa [Function.uncurry, mul_assoc, mul_left_comm, mul_comm] using (a4 k z)
 
-
 lemma EQ22 (k : ℕ) (hk : 3 ≤ (k : ℤ)) (z : ℍ) :
     ∑' (x : Fin 2 → ℤ), eisSummand k x z =
     (riemannZeta (k)) * ∑' (c : gammaSet 1 1 0), eisSummand k c z := by
@@ -290,7 +291,6 @@ lemma EQ2 (k : ℕ) (hk : 3 ≤ (k : ℤ)) (z : ℍ) : ∑' x : Fin 2 → ℤ,
     1 / (x 0 * (z : ℂ) + x 1) ^ ↑k = riemannZeta k * ∑' c : gammaSet 1 1 0,
     1 / ((c.1 0) * (z : ℂ) + (c.1 1)) ^ k := by
   simpa [eisSummand, zpow_neg, zpow_natCast, one_div] using (EQ22 k hk z)
-
 
 /-- `q`-expansion formula for `E k`, specialized to the conventions used in this repository. -/
 public lemma E_k_q_expansion (k : ℕ) (hk : 3 ≤ (k : ℤ)) (hk2 : Even k) (z : ℍ) :

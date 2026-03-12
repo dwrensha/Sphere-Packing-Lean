@@ -196,6 +196,13 @@ lemma multipliable_pow {ι : Type*} (f : ι → ℝ) (hf : Multipliable f) (n : 
     Multipliable (fun i => f i ^ n) := by
   induction n with | zero => simp | succ n hn => simpa [pow_succ] using hn.mul hf
 
+include hf in
+private lemma step_1 :
+    norm ((f z) / (Δ z)) = norm (
+      (∑' (n : ℕ), c (n + n₀) * cexp (π * I * (n + n₀) * z)) /
+      (cexp (2 * π * I * z) * ∏' (n : ℕ+), (1 - cexp (2 * π * I * n * z)) ^ 24)
+    ) := by simp [DiscriminantProductFormula, hf, fouterm];
+
 lemma step_7 :
     norm (cexp (π * I * (n₀ - 2) * z)) * norm (∑' (n : ℕ), c (n + n₀) * cexp (π * I * n * z)) /
     ∏' (n : ℕ+), norm (1 - cexp (2 * π * I * n * z)) ^ 24 ≤

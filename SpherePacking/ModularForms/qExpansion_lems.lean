@@ -6,6 +6,7 @@ public import Mathlib.NumberTheory.ModularForms.QExpansion
 public import Mathlib.Order.CompletePartialOrder
 import Mathlib.Tactic.Cases
 
+@[expose] public section
 
 /-!
 # Limits at infinity
@@ -35,7 +36,6 @@ public theorem modform_tendto_ndhs_zero {k : ℤ} (n : ℕ) [ModularFormClass F 
         (by simp [CongruenceSubgroup.strictPeriods_Gamma])).continuousAt
   simpa [SlashInvariantFormClass.cuspFunction, Function.comp] using
     (Function.Periodic.tendsto_nhds_zero (h := (n : ℝ)) (f := ⇑f ∘ (↑ofComplex : ℂ → ℍ)) hcont)
-
 
 /-- A modular form converges to its `valueAtInfty` as `im τ → ∞` (for `Γ(n)`). -/
 public theorem modularForm_tendsto_atImInfty {k : ℤ} (n : ℕ) (f : ModularForm Γ(n) k)
@@ -131,8 +131,6 @@ public lemma qExpansion_mul_coeff (a b : ℤ) (f : ModularForm Γ(n) a) (g : Mod
 variable {𝕜 : Type*} [NontriviallyNormedField 𝕜]
 variable {F : Type*} [NormedAddCommGroup F] [NormedSpace 𝕜 F]
 
-
-
 lemma IteratedDeriv_smul (a : ℂ) (f : ℂ → ℂ) (m : ℕ) :
     iteratedDeriv m (a • f) = a • iteratedDeriv m f := by
   induction m with
@@ -144,41 +142,9 @@ lemma IteratedDeriv_smul (a : ℂ) (f : ℂ → ℂ) (m : ℕ) :
     exact deriv_const_smul_field a ..
 
 public lemma qExpansion_smul2 (a : ℂ) (f : ModularForm Γ(n) k) [NeZero n] :
-    (a • qExpansion n f) = (qExpansion n (a • f)) := by
-  ext m
-  simp only [_root_.map_smul, smul_eq_mul]
-  simp_rw [qExpansion]
-  have : (cuspFunction n (a • f)) = a • cuspFunction n f := by
-    ext z
-    by_cases h : z = 0
-    · simp_rw [h, cuspFunction,Periodic.cuspFunction]
-      simp only [update_self, Pi.smul_apply, smul_eq_mul]
-      rw [Filter.limUnder_eq_iff ]
-      · have hl : ((a • ⇑f) ∘ ↑ofComplex) ∘ Periodic.invQParam ↑n = fun x => a * (f ∘ ↑ofComplex)
-          (Periodic.invQParam ↑n x) := by
-          ext y
-          simp
-        rw [hl]
-        simp only [comp_apply]
-        apply Filter.Tendsto.const_mul
-        have := modform_tendto_ndhs_zero f _
-        simp only [comp_apply] at this
-        convert this
-        rw [Filter.limUnder_eq_iff ]
-        · apply this
-        aesop
-      have := modform_tendto_ndhs_zero (a • f) _
-      aesop
-    · simp only [cuspFunction, Pi.smul_apply, smul_eq_mul]
-      rw [Function.Periodic.cuspFunction_eq_of_nonzero _ _ h,
-        Function.Periodic.cuspFunction_eq_of_nonzero _ _ h]
-      simp
-  simp only [PowerSeries.coeff_mk, this]
-  conv =>
-    enter [2,2]
-    rw [IteratedDeriv_smul]
-  simp only [Pi.smul_apply, smul_eq_mul]
-  ring
+    (a • qExpansion n f) = (qExpansion n (a • f)) :=
+  (qExpansion_smul (Γ := Γ(n)) (h := n) (hh := Nat.cast_pos.mpr (Nat.pos_of_neZero n))
+      (hΓ := by simp) a f).symm
 
 instance : FunLike (ℍ → ℂ) ℍ ℂ := { coe := fun ⦃a₁⦄ ↦ a₁, coe_injective' := fun ⦃_ _⦄ a ↦ a}
 
@@ -206,7 +172,6 @@ public lemma qExpansion_sub1 {a b : ℤ} (f : ModularForm Γ(1) a) (g : ModularF
     (qExpansion_sub (Γ := Γ(1)) (h := (1 : ℝ)) (by norm_num)
       (by simp [CongruenceSubgroup.strictPeriods_Gamma]) f g)
 
-@[simp] --generalize this away from ℂ
 lemma IteratedDeriv_zero_fun (n : ℕ) (z : ℂ) : iteratedDeriv n (fun _ : ℂ => (0 : ℂ)) z = 0 := by
   norm_num
 
@@ -216,20 +181,17 @@ lemma iteratedDeriv_const_eq_zero (m : ℕ) (hm : 0 < m) (c : ℂ) :
   have := iteratedDeriv_const_add hm (f := fun (x : ℂ) => (0 : ℂ)) c (x := z)
   simpa only [add_zero, IteratedDeriv_zero_fun] using this
 
-/-- The `qExpansion` of a power agrees with the power of the `qExpansion`. -/
-public lemma qExpansion_pow (f : ModularForm Γ(1) k) (n : ℕ) :
-    qExpansion 1 ((((DirectSum.of (ModularForm Γ(1)) k) f) ^ n) (n * k)) =
-      (qExpansion 1 f) ^ n := by
-  simpa using
-    (qExpansion_of_pow (Γ := Γ(1)) (h := (1 : ℝ)) (k := k) (by norm_num)
-      (by simp [CongruenceSubgroup.strictPeriods_Gamma]) f n)
+lemma qExpansion_pow (f : ModularForm Γ(1) k) (n : ℕ) :
+  qExpansion 1 ((((DirectSum.of (ModularForm Γ(1)) k ) f) ^ n) (n * k)) = (qExpansion 1 f) ^ n := by
+  exact_mod_cast
+    (qExpansion_of_pow (Γ := Γ(1)) (h := (1 : ℕ))
+      (hh := by positivity) (hΓ := by simp) (f := f) (n := n))
 
-/-
 lemma qExpansion_injective [hn : NeZero n] (f : ModularForm Γ(n) k) :
     qExpansion n f = 0 ↔ f = 0 := by
   refine ⟨fun h ↦ ?_, fun h ↦ ?_⟩
   · ext z
     have n_pos : 0 < n := Nat.zero_lt_of_ne_zero hn.1
     simp [← (hasSum_qExpansion (h := n) f (by positivity) (by simp) z).tsum_eq, h]
-  · simp [h]
--/
+  · subst h
+    simpa using (qExpansion_zero (h := n))

@@ -4,7 +4,6 @@ public import Mathlib.NumberTheory.ModularForms.QExpansion
 public import Mathlib.Topology.Order.Compact
 import SpherePacking.ForMathlib.ExpPiIMulMulI
 
-
 /-!
 # The Eisenstein combination `A_E`
 

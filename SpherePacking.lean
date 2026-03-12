@@ -255,6 +255,7 @@ import SpherePacking.ModularForms.logDeriv_lems
 import SpherePacking.ModularForms.multipliable_lems
 import SpherePacking.ModularForms.qExpansion_lems
 import SpherePacking.ModularForms.riemannZetalems
+import SpherePacking.ModularForms.summable_lems
 import SpherePacking.ModularForms.tendstolems
 import SpherePacking.ModularForms.tsumderivWithin
 import SpherePacking.ModularForms.uniformcts

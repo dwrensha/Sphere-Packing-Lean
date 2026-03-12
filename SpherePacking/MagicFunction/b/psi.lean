@@ -86,7 +86,8 @@ lemma slashS (z : ℍ) (F : ℍ → ℂ) : (F ∣[(2 : ℤ)] (S)) (z) =
 The prime in `slashS'` indicates the `k = -2` specialization (compare `slashS`). -/
 public lemma slashS' (z : ℍ) (F : ℍ → ℂ) : (F ∣[(-2 : ℤ)] (S)) (z) =
     F (S • z) * (z : ℂ) ^ (2 : ℕ) := by
-  simp [SL_slash_apply, S, denom, sl_moeb, zpow_two, pow_two]
+  rw [SL_slash_apply, S, denom]
+  simp [zpow_two, pow_two]
 
 lemma slashS'' (z : ℍ) (F : ℍ → ℂ) : F (S • z) =
     (F ∣[(2 : ℤ)] (S)) (z) * (z : ℂ) ^ (2 : ℕ) := by

@@ -48,8 +48,12 @@ public lemma DifferentiableAt_MDifferentiableAt {G : ℂ → ℂ} {z : ℍ}
   (h : DifferentiableAt ℂ G ↑z) :
   MDiffAt (G ∘ (↑) : ℍ → ℂ) z := by
   rw [mdifferentiableAt_iff]
-  refine h.congr_of_eventuallyEq <| Filter.eventuallyEq_of_mem (isOpen_upperHalfPlaneSet.mem_nhds
-    z.im_pos) (by intro w hw; simp [Function.comp, ofComplex_apply_of_im_pos hw])
+  -- Goal: DifferentiableAt ℂ ((G ∘ (↑)) ∘ ofComplex) ↑z
+  -- The functions ((G ∘ (↑)) ∘ ofComplex) and G agree on the upper half-plane
+  -- which is a neighborhood of ↑z
+  apply DifferentiableAt.congr_of_eventuallyEq h
+  filter_upwards [isOpen_upperHalfPlaneSet.mem_nhds z.im_pos] with w hw
+  simp [Function.comp_apply, ofComplex_apply_of_im_pos hw]
 
 /--
 The derivative operator `D` preserves MDifferentiability.
@@ -64,13 +68,18 @@ public theorem D_differentiable {F : ℍ → ℂ} (hF : MDiff F) : MDiff (D F) :
 TODO: Move this to E2.lean. -/
 public theorem E₂_holo' : MDiff E₂ := by
   rw [UpperHalfPlane.mdifferentiable_iff]
-  have hη : DifferentiableOn ℂ η _ :=
-    fun z hz => (eta_DifferentiableAt_UpperHalfPlane ⟨z, hz⟩).differentiableWithinAt
+  have hη : DifferentiableOn ℂ η {z : ℂ | 0 < z.im} := by
+    intro z hz
+    have hz' : DifferentiableAt ℂ η z := by
+      simpa [η] using (ModularForm.differentiableAt_eta_of_mem_upperHalfPlaneSet (z := z) hz)
+    exact hz'.differentiableWithinAt
   have hlog : DifferentiableOn ℂ (logDeriv η) {z | 0 < z.im} :=
-    (hη.deriv isOpen_upperHalfPlaneSet).div hη fun _ hz => by
-      simpa using eta_nonzero_on_UpperHalfPlane ⟨_, hz⟩
+    (hη.deriv isOpen_upperHalfPlaneSet).div hη fun z hz => by
+      simpa [η] using (ModularForm.eta_ne_zero (z := z) hz)
   exact (hlog.const_mul ((↑π * I / 12)⁻¹)).congr fun z hz => by
-    simp [Function.comp_apply, ofComplex_apply_of_im_pos hz, eta_logDeriv ⟨z, hz⟩]
+    simp only [Function.comp_apply, ofComplex_apply_of_im_pos hz,
+      show logDeriv η z = (↑π * I / 12) * E₂ ⟨z, hz⟩ by
+        simpa [η, E₂] using (ModularForm.logDeriv_eta_eq_E2 ⟨z, hz⟩)]
     field_simp [Real.pi_ne_zero]
 
 /--
@@ -144,11 +153,11 @@ lemma MDifferentiable_div {F G : ℍ → ℂ}
     (hG_ne : ∀ z : ℍ, G z ≠ 0) :
     MDifferentiable 𝓘(ℂ) 𝓘(ℂ) (fun z => F z / G z) := by
   intro τ
-  suffices h : DifferentiableAt ℂ ((fun z => F z / G z) ∘ ofComplex) τ by
+  suffices h : DifferentiableAt ℂ ((fun z => F z / G z) ∘ ofComplex) ↑τ by
     have h_eq : ((fun z => F z / G z) ∘ ofComplex) ∘ UpperHalfPlane.coe = fun z => F z / G z := by
       ext x; simp [Function.comp, ofComplex_apply]
     rw [← h_eq]; exact DifferentiableAt_MDifferentiableAt h
-  have h_eq : (fun z => F z / G z) ∘ ofComplex =ᶠ[nhds (UpperHalfPlane.coe τ)]
+  have h_eq : (fun z => F z / G z) ∘ ofComplex =ᶠ[nhds ↑τ]
       (F ∘ ofComplex) / (G ∘ ofComplex) := by
     filter_upwards [isOpen_upperHalfPlaneSet.mem_nhds τ.2] with w hw
     simp [Function.comp, Pi.div_apply, ofComplex_apply_of_im_pos hw]
@@ -450,8 +459,10 @@ public lemma D_slash (k : ℤ) (F : ℍ → ℂ) (hF : MDiff F) (γ : SL(2, ℤ)
         have : 0 < (gz : ℂ).im := by simpa using gz.im_pos
         simpa [hsmul_coe] using this
       congr 1
-      ext
-      · simpa [ofComplex_apply_of_im_pos hmob_im] using hsmul_coe
+      -- Show gz = ofComplex (num/denom) as points in ℍ
+      apply UpperHalfPlane.ext
+      rw [ofComplex_apply_of_im_pos hmob_im]
+      exact hsmul_coe
   rw [hcomp]
   -- Now apply product rule: deriv[f * g] = f * deriv[g] + deriv[f] * g
   -- where f(w) = (F ∘ ofComplex)(num w / denom w) and g(w) = denom(w)^(-k)
@@ -534,14 +545,15 @@ public lemma E₂_slash (γ : SL(2, ℤ)) :
       simpa [a, mul_assoc, mul_left_comm, mul_comm, neg_mul, mul_neg] using hcoeff
     rw [← hcoeff']
     simp [D₂, div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm, a]
+  unfold G₂ at hG
   calc
     (E₂ ∣[(2 : ℤ)] γ) z = a * (G₂ z - D₂ γ z) := by
-      simp [E₂, a, hG, Pi.smul_apply, smul_eq_mul, mul_assoc]
+      simp [E₂, EisensteinSeries.E2, G₂, a, hG, Pi.smul_apply, smul_eq_mul, mul_assoc]
     _ = a * G₂ z + (12 : ℂ) * (2 * π * I)⁻¹ * (γ 1 0 / denom γ z) := by
       simpa [sub_eq_add_neg, mul_add, add_assoc, add_left_comm, add_comm] using
         congrArg (fun t => a * G₂ z + t) hcorr
     _ = E₂ z + (12 : ℂ) * (2 * π * I)⁻¹ * (γ 1 0 / denom γ z) := by
-      simp [E₂, Pi.smul_apply, smul_eq_mul, mul_assoc, a]
+      simp [E₂, EisensteinSeries.E2, G₂, Pi.smul_apply, smul_eq_mul, mul_assoc, a]
 
 /-- Serre derivative is equivariant under the slash action. -/
 public theorem serre_D_slash_equivariant (k : ℤ) (F : ℍ → ℂ) (hF : MDiff F) :
@@ -738,7 +750,7 @@ public theorem D_Delta_eq_E₂_mul_Delta : D Δ = E₂ * Δ := by
       (fun w : ℂ => Δ (ofComplex w)) =ᶠ[nhds (z : ℂ)] fun w => (η w) ^ (24 : ℕ) := by
     filter_upwards [isOpen_upperHalfPlaneSet.mem_nhds z.im_pos] with w hw
     simpa [ofComplex_apply_of_im_pos hw] using (Delta_eq_eta_pow (ofComplex w))
-  have hηnz : η (z : ℂ) ≠ 0 := eta_nonzero_on_UpperHalfPlane z
+  have hηnz : η (z : ℂ) ≠ 0 := ModularForm.eta_ne_zero z.2
   have hlog :
       logDeriv (fun w : ℂ => (η w) ^ (24 : ℕ)) (z : ℂ) = (2 * π * I) * E₂ z := by
     have hpowdiff : DifferentiableAt ℂ (fun x : ℂ => x ^ (24 : ℕ)) (η (z : ℂ)) := by
@@ -747,13 +759,14 @@ public theorem D_Delta_eq_E₂_mul_Delta : D Δ = E₂ * Δ := by
       logDeriv (fun w : ℂ => (η w) ^ (24 : ℕ)) (z : ℂ) =
           logDeriv (fun x : ℂ => x ^ (24 : ℕ)) (η (z : ℂ)) * deriv η (z : ℂ) := by
             simpa [Function.comp] using
-              (logDeriv_comp (x := (z : ℂ)) hpowdiff (eta_DifferentiableAt_UpperHalfPlane z))
+              (logDeriv_comp (x := (z : ℂ)) hpowdiff
+                (ModularForm.differentiableAt_eta_of_mem_upperHalfPlaneSet z.2))
       _ = ((24 : ℂ) / η (z : ℂ)) * deriv η (z : ℂ) := by
             simp [logDeriv_pow]
       _ = (24 : ℂ) * logDeriv η (z : ℂ) := by
             simp [logDeriv, div_eq_mul_inv, mul_assoc, mul_comm]
       _ = (2 * π * I) * E₂ z := by
-            rw [eta_logDeriv z]
+            rw [ModularForm.logDeriv_eta_eq_E2 z, E₂]
             ring
   have hderiv_eta_pow :
       deriv (fun w : ℂ => (η w) ^ (24 : ℕ)) (z : ℂ) =

@@ -2,9 +2,10 @@ module
 public import SpherePacking.ModularForms.SlashActionAuxil
 public import SpherePacking.ModularForms.clog_arg_lems
 public import SpherePacking.ModularForms.eta
+public import SpherePacking.ModularForms.multipliable_lems
 public import SpherePacking.ModularForms.ResToImagAxis
-import Mathlib.NumberTheory.ModularForms.QExpansion
-import SpherePacking.Tactic.NormNumI
+public import Mathlib.NumberTheory.ModularForms.QExpansion
+public import SpherePacking.Tactic.NormNumI
 
 public import SpherePacking.ForMathlib.Cusps
 
@@ -36,18 +37,24 @@ public lemma DiscriminantProductFormula (z : ℍ) :
 
 /-- The discriminant form is the 24th power of the Dedekind eta function. -/
 public lemma Delta_eq_eta_pow (z : ℍ) : Δ z = (η z) ^ 24 := by
-  rw [η, Δ, mul_pow]
+  have hm : Multipliable (fun n : ℕ => 1 - ModularForm.eta_q n z) := by
+    refine (MultipliableEtaProductExpansion z).congr ?_
+    intro n
+    simp [ModularForm.eta_q_eq_cexp]
+  rw [η, ModularForm.eta, Δ, mul_pow, tprod_pow (f := fun n : ℕ => 1 - ModularForm.eta_q n z)
+    hm 24]
   congr
-  · rw [← Complex.exp_nat_mul]
+  · rw [Periodic.qParam]
+    rw [← Complex.exp_nat_mul]
     congr 1
     simp [field]
-  rw [tprod_pow]
-  apply MultipliableEtaProductExpansion
-
+  · ext n
+    simp [ModularForm.eta_q_eq_cexp]
 
 /-- The discriminant `Δ z` is nonzero on the upper half-plane. -/
 public lemma Δ_ne_zero (z : UpperHalfPlane) : Δ z ≠ 0 := by
-  simpa [Delta_eq_eta_pow] using pow_ne_zero 24 (eta_nonzero_on_UpperHalfPlane z)
+  rw [Delta_eq_eta_pow]
+  simpa [η] using (ModularForm.eta_ne_zero (z := (z : ℂ)) z.2)
 
 /-- Invariance of `Δ` under the translation `T : z ↦ z + 1`. -/
 public lemma Discriminant_T_invariant : (Δ ∣[(12 : ℤ)] ModularGroup.T) = Δ := by
@@ -300,12 +307,11 @@ public lemma Discriminant_zeroAtImInfty :
   holo' := by
     rw [UpperHalfPlane.mdifferentiable_iff]
     simp only [SlashInvariantForm.coe_mk]
-    have := eta_DifferentiableAt_UpperHalfPlane
     have he2 : DifferentiableOn ℂ (fun z => (η z) ^ 24) {z | 0 < z.im} := by
       apply DifferentiableOn.pow
       intro x hx
       apply DifferentiableAt.differentiableWithinAt
-      exact this ⟨x, hx⟩
+      simpa [η] using (ModularForm.differentiableAt_eta_of_mem_upperHalfPlaneSet (z := x) hx)
     rw [Discriminant_SIF]
     simp only [SlashInvariantForm.coe_mk]
     apply he2.congr

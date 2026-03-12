@@ -10,9 +10,9 @@ In this file we establish basic results about q-expansions. The results are put 
 namespace.
 -/
 
-namespace QExp
-
 open scoped Real
+
+namespace QExp
 
 open UpperHalfPlane hiding I
 open Complex Asymptotics Topology Filter

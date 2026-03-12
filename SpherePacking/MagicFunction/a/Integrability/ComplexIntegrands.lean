@@ -45,8 +45,6 @@ section Helpers
 
 namespace UpperHalfPlane
 
-theorem range_upperHalfPlane_coe : range UpperHalfPlane.coe = ℍ₀ := range_coe
-
 theorem zero_not_mem_upperHalfPlaneSet : (0 : ℂ) ∉ ℍ₀ := by simp
 
 end UpperHalfPlane

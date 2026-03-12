@@ -142,9 +142,10 @@ public theorem ResToImagAxis.Differentiable (F : ℍ → ℂ) (hF : MDifferentia
       DifferentiableAt ℝ (fun t : ℝ => F (ofComplex (Complex.I * t))) t := by
     convert this.restrictScalars ℝ |> DifferentiableAt.comp t <|
       DifferentiableAt.const_mul ofRealCLM.differentiableAt _ using 1
-  refine h_diff.congr_of_eventuallyEq ?_
-  filter_upwards [lt_mem_nhds ht] with u hu
-  simp [ResToImagAxis, hu, ofComplex_apply_of_im_pos]
+  apply h_diff.congr_of_eventuallyEq
+  filter_upwards [lt_mem_nhds ht] with t ht
+  simp_all only [ResToImagAxis, ↓reduceDIte]
+  rw [ofComplex_apply_of_im_pos]
 
 /--
 Restriction and slash action under S: $(F |_k S) (it) = (it)^{-k} * F(it)$
